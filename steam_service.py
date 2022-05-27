@@ -14,9 +14,7 @@ def sign_in():
         steam_client = SteamClient()
         load_dotenv('./server_secrets.env')
         steam_username=os.getenv('steamUser')
-        print(steam_username)
         steam_password = os.getenv('steamPass')
-        print(steam_password)
         steam_client.cli_login(username=steam_username,password=steam_password)
 
 
