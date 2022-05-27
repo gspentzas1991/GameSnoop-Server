@@ -62,8 +62,8 @@ class SteamServerQuery():
         """
         Creates a string query with the parameters of the object
         """
-        query = fr'\appid\{self.appId}\name_match\*{self.serverName}*'
-        if(self.serverName != ''):
+        query = fr'\appid\{self.appId}'
+        if(self.serverName):
             query+=fr'\name_match\*{self.serverName}*'
         #adds a
         for param in self.params:
