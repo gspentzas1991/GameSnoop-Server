@@ -1,5 +1,8 @@
 from steam.client import SteamClient
 from enum import Enum
+from dotenv import load_dotenv
+import os
+
 
 
 
@@ -9,7 +12,12 @@ def sign_in():
     global steam_client 
     if(steam_client.session_id is None):
         steam_client = SteamClient()
-        steam_client.cli_login(username='YourSteamUsername',password='YourSteamPassword')
+        load_dotenv('./server_secrets.env')
+        steam_username=os.getenv('steamUser')
+        print(steam_username)
+        steam_password = os.getenv('steamPass')
+        print(steam_password)
+        steam_client.cli_login(username=steam_username,password=steam_password)
 
 
 class SteamQueryParam(Enum):
