@@ -43,6 +43,8 @@ class SteamServerQuery():
 
     appId: an int of the game's steam AppId to be applied to the query
 
+    serverName: will only return servers that have this string in their hostname
+
     ***
 
     example call: SteamServerQuery(params=['\\empty\\1','\\full\\1','\\gametype\\pvp'], excludeParams=['\\secure\\1'])
@@ -50,16 +52,19 @@ class SteamServerQuery():
     resulting Filter:  \\appid\\1604030\\empty\\1\\full\\1\\gametype\\pvp\\nor\\1\\secure\\1
     
     '''
-    def __init__(self,params=[],excludeParams=[],appId = 1604030 ):
+    def __init__(self,params=[],excludeParams=[],appId = 1604030,serverName='' ):
         self.params = params
         self.excludeParams = excludeParams
         self.appId = appId
+        self.serverName = serverName
 
     def get_query(self):
         """
         Creates a string query with the parameters of the object
         """
-        query = fr'\appid\{self.appId}'
+        query = fr'\appid\{self.appId}\name_match\*{self.serverName}*'
+        if(self.serverName != ''):
+            query+=fr'\name_match\*{self.serverName}*'
         #adds a
         for param in self.params:
             query+=param.value
