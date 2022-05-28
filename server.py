@@ -15,30 +15,40 @@ app = Flask(__name__)
 @app.route("/servers",methods = ['GET'])
 def servers():
     server_list = {'servers':[]}
-    #gets the name parameter of the request
+    #gets the request parameters
+    #TODO: add parameter validation
     name = request.args.get('name', None)
-    game_servers = []
-    #each steam server request can return up to 20k servers, so we need to create multiple different queries and collect the results to get all servers
-    #by default we ignore empty servers, this might turn into an option later (probably everything will be handled with frontent filters)
-    queryList = []
-    #password protected servers (any kind)
-    queryList.append(SteamServerQuery(params=[SteamQueryParam.Secure,SteamQueryParam.NotEmpty],serverName=name))
-    #full servers (any kind)
-    queryList.append(SteamServerQuery(excludeParams=[SteamQueryParam.NotFull],serverName=name))
-    #PVP servers with no password, who are not full
-    queryList.append(SteamServerQuery(params=[SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.GameTypePVP],
-    excludeParams=[SteamQueryParam.Secure],serverName=name))
-    #pve servers of clan size 4 who are not full, with no password and not hardcore
-    queryList.append(SteamServerQuery(params=[SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.GameTypePVE,SteamQueryParam.GameTypeCS4],
-    excludeParams=[SteamQueryParam.Secure,SteamQueryParam.GameTypeHC],serverName=name))
-    #PVE servers with no password, not hardcore and with a clan size different than 4
-    queryList.append(SteamServerQuery(params=[SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.GameTypePVE],
-    excludeParams=[SteamQueryParam.Secure,SteamQueryParam.GameTypeHC,SteamQueryParam.GameTypeCS4],serverName=name))
-    #PVE servers that are HardCore with no passwords
-    queryList.append(SteamServerQuery(params=[SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.GameTypePVE,SteamQueryParam.GameTypeHC],
-    excludeParams=[SteamQueryParam.Secure],serverName=name))
-    for query in queryList:
-        game_servers.extend(steam_service.get_server_list(query.get_query()))
+    pvp = request.args.get('pvp',False)
+    pve = request.args.get('pve',False)
+    clan_size = int(request.args.get('clanSize','0'))
+    secure = request.args.get('secure',False)
+    #generate the steam server query based on the received parameters
+    #TODO:We don't include empty servers by default. Might change later to receive the value from filters
+    queryParams = [SteamQueryParam.NotEmpty]
+    excludeParams = []
+    #TODO: fix the string booleans (due to rest api returning them as lowercase booleans)
+    if(pvp=='true'):
+        queryParams.append(SteamQueryParam.GameTypePVP)
+    if(pve=='true'):
+        queryParams.append(SteamQueryParam.GameTypePVE)
+    if(secure=='true'):
+        queryParams.append(SteamQueryParam.Secure)
+    else:
+        excludeParams.append(SteamQueryParam.Secure)
+    #TODO: fix clan_size parameter to work with any given number (or change it to only be cs2 or cs4)
+    if(clan_size>0):
+        queryParams.append(SteamQueryParam.GameTypeCS4)
+    query = SteamServerQuery(params=queryParams,excludeParams=excludeParams,serverName=name).get_query()
+    game_servers=steam_service.get_server_list(query)
+
+    for server in game_servers:
+        server_list['servers'].append({'name':str(server['name']),'players':server['players'], 'max_players':server['max_players']})
+    return server_list
+
+@app.route("/allServers",methods = ['GET'])
+def allServers():
+    server_list = {'servers':[]}
+    game_servers=steam_service.get_complete_server_list()
     for server in game_servers:
         server_list['servers'].append({'name':str(server['name']),'players':server['players'], 'max_players':server['max_players']})
     return server_list

@@ -60,7 +60,7 @@ class SteamServerQuery():
 
     def get_query(self):
         """
-        Creates a string query with the parameters of the object
+        Returns a string query with the parameters of the object
         """
         query = fr'\appid\{self.appId}'
         if(self.serverName):
@@ -84,3 +84,37 @@ def get_server_list(stringQuery, max_servers=20000,timeout = 50):
     '''
     result =  steam_client.gameservers.get_server_list(stringQuery,max_servers,timeout)
     return result
+
+def get_complete_server_list():
+    '''
+    Runs multiple Steam Server Queries to get every single game server listed (not including empty ones)
+
+    Because each query can only return up to 20k servers, we split up server types to try to get fewer servers with each query
+
+    Returns the serverlist
+    
+    '''
+
+    game_servers = []
+    #each steam server request can return up to 20k servers, so we need to create multiple different queries and collect the results to get all servers
+    #by default we ignore empty servers, this might turn into an option later (probably everything will be handled with frontent filters)
+    queryList = []
+    #password protected servers (any kind)
+    queryList.append(SteamServerQuery(params=[SteamQueryParam.Secure,SteamQueryParam.NotEmpty]))
+    #full servers (any kind)
+    queryList.append(SteamServerQuery(excludeParams=[SteamQueryParam.NotFull]))
+    #PVP servers with no password, who are not full
+    queryList.append(SteamServerQuery(params=[SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.GameTypePVP],
+    excludeParams=[SteamQueryParam.Secure]))
+    #pve servers of clan size 4 who are not full, with no password and not hardcore
+    queryList.append(SteamServerQuery(params=[SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.GameTypePVE,SteamQueryParam.GameTypeCS4],
+    excludeParams=[SteamQueryParam.Secure,SteamQueryParam.GameTypeHC]))
+    #PVE servers with no password, not hardcore and with a clan size different than 4
+    queryList.append(SteamServerQuery(params=[SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.GameTypePVE],
+    excludeParams=[SteamQueryParam.Secure,SteamQueryParam.GameTypeHC,SteamQueryParam.GameTypeCS4]))
+    #PVE servers that are HardCore with no passwords
+    queryList.append(SteamServerQuery(params=[SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.GameTypePVE,SteamQueryParam.GameTypeHC],
+    excludeParams=[SteamQueryParam.Secure]))
+    for query in queryList:
+        game_servers.extend(get_server_list(query.get_query()))
+    return game_servers
