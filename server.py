@@ -127,5 +127,4 @@ def generate_server_model(steam_server):
     return serverObject
 
 if __name__ == "__main__":
-    port = int(os.getenv('PORT'))
-    app.run(debug=True,port=port)
+    app.run(debug=True)
