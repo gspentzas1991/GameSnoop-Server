@@ -1,1 +1,1 @@
-web: gunicorn fl_server:app
+web: gunicorn wsgi:app
