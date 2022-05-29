@@ -12,6 +12,10 @@ import steam_service
 app = Flask(__name__)
 
 #Flask Routing endpoints
+@app.route("/",methods = ['GET'])
+def home():
+    return 'hello world'
+
 @app.route("/servers",methods = ['GET'])
 def servers():
     #gets the request parameters
