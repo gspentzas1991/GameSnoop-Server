@@ -27,6 +27,7 @@ class SteamQueryParam(Enum):
     Secure = r'\secure\1'
     GameTypePVE = r'\gametype\pve'
     GameTypePVP = r'\gametype\pvp'
+    GameTypeCS2 = r'\gametype\cs2'
     GameTypeCS4 = r'\gametype\cs4'
     GameTypeHC = r'\gametype\hc'
 

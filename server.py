@@ -17,32 +17,52 @@ def servers():
     server_list = {'servers':[]}
     #gets the request parameters
     #TODO: add parameter validation
-    name = request.args.get('name', None)
-    pvp = request.args.get('pvp',False)
-    pve = request.args.get('pve',False)
-    clan_size = int(request.args.get('clanSize','0'))
-    secure = request.args.get('secure',False)
+    serverName = request.args.get('serverName', None)
+    clanSizeList = request.args.get('clanSize',[]).split(',')
+    serverTypeList = request.args.get('serverType',[]).split(',')
     #generate the steam server query based on the received parameters
     #TODO:We don't include empty servers by default. Might change later to receive the value from filters
     queryParams = [SteamQueryParam.NotEmpty]
     excludeParams = []
     #TODO: fix the string booleans (due to rest api returning them as lowercase booleans)
-    if(pvp=='true'):
-        queryParams.append(SteamQueryParam.GameTypePVP)
-    if(pve=='true'):
-        queryParams.append(SteamQueryParam.GameTypePVE)
-    if(secure=='true'):
-        queryParams.append(SteamQueryParam.Secure)
-    else:
-        excludeParams.append(SteamQueryParam.Secure)
-    #TODO: fix clan_size parameter to work with any given number (or change it to only be cs2 or cs4)
-    if(clan_size>0):
-        queryParams.append(SteamQueryParam.GameTypeCS4)
-    query = SteamServerQuery(params=queryParams,excludeParams=excludeParams,serverName=name).get_query()
+    remainingClanSizes = [SteamQueryParam.GameTypeCS4,SteamQueryParam.GameTypeCS2]
+    for clanSize in clanSizeList:
+        if clanSize == 'Two':
+            #queryParams.append(SteamQueryParam.GameTypeCS2)
+            remainingClanSizes.remove(SteamQueryParam.GameTypeCS2)
+        elif clanSize == 'Four':
+            #queryParams.append(SteamQueryParam.GameTypeCS4)
+            remainingClanSizes.remove(SteamQueryParam.GameTypeCS4)
+    #any clan sizes that we didn't get, we'll remove from results
+    for clanSize in remainingClanSizes:
+        excludeParams.append(clanSize)
+
+    remainingServerTypes = [SteamQueryParam.GameTypePVE,SteamQueryParam.GameTypePVP,SteamQueryParam.Secure,SteamQueryParam.GameTypeHC]
+    for serverType in serverTypeList:
+        if serverType == 'PvP':
+            #queryParams.append(SteamQueryParam.GameTypePVP)
+            remainingServerTypes.remove(SteamQueryParam.GameTypePVP)
+        elif serverType == 'PvE':
+            #queryParams.append(SteamQueryParam.GameTypePVE)
+            remainingServerTypes.remove(SteamQueryParam.GameTypePVE)
+        elif clanSize == 'Dedicated':
+            #queryParams.append(SteamQueryParam.Secure)
+            remainingServerTypes.remove(SteamQueryParam.Secure)
+        elif clanSize == 'Hardcore':
+            #queryParams.append(SteamQueryParam.GameTypeHC)
+            remainingServerTypes.remove(SteamQueryParam.GameTypeHC)
+    #any clan sizes that we didn't get, we'll remove from results
+    for serverTypes in remainingServerTypes:
+        excludeParams.append(serverTypes)
+
+    query = SteamServerQuery(params=queryParams,excludeParams=excludeParams,serverName=serverName).get_query()
+    print(query)
     game_servers=steam_service.get_server_list(query)
 
     for server in game_servers:
+        print(server)
         server_list['servers'].append({'name':str(server['name']),'players':server['players'], 'max_players':server['max_players']})
+
     return server_list
 
 @app.route("/allServers",methods = ['GET'])
