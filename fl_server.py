@@ -6,7 +6,7 @@ from flask import request
 from steam_service import SteamServerQuery
 from steam_service import SteamQueryParam
 import steam_service
-
+import os
 
 
 app = Flask(__name__)
@@ -127,4 +127,5 @@ def generate_server_model(steam_server):
     return serverObject
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.getenv('PORT'))
+    app.run(debug=True,port=port)
