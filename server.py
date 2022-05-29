@@ -18,49 +18,58 @@ def servers():
     #gets the request parameters
     #TODO: add parameter validation
     serverName = request.args.get('serverName', None)
-    clanSizeList = request.args.get('clanSize',[]).split(',')
-    serverTypeList = request.args.get('serverType',[]).split(',')
-    #generate the steam server query based on the received parameters
+    clanSizeList = request.args.get('clanSize','').split(',')
+    multiplayerModeList = request.args.get('serverType','').split(',')
+    dedicated = request.args.get('dedicated', None)
+    secure = request.args.get('secure', None)
+    difficulty = request.args.get('difficulty', None)
+
     #TODO:We don't include empty servers by default. Might change later to receive the value from filters
+    #parameters that we want to apply on the steam query
     queryParams = [SteamQueryParam.NotEmpty]
+    #parameters of servers we want to be excluded from the steam query
     excludeParams = []
-    #TODO: fix the string booleans (due to rest api returning them as lowercase booleans)
-    remainingClanSizes = [SteamQueryParam.GameTypeCS4,SteamQueryParam.GameTypeCS2]
+
+    if serverName :
+        queryParams.append(SteamQueryParam.get_server_name(serverName))
+
+    #for each value of clanSizeList we're going to create a SteamQueryParam and apply a logical OR on them
+    #that way we get servers that have any of the supplied clan sizes
+    acceptedClanSizes = []
     for clanSize in clanSizeList:
-        if clanSize == 'Two':
-            #queryParams.append(SteamQueryParam.GameTypeCS2)
-            remainingClanSizes.remove(SteamQueryParam.GameTypeCS2)
-        elif clanSize == 'Four':
-            #queryParams.append(SteamQueryParam.GameTypeCS4)
-            remainingClanSizes.remove(SteamQueryParam.GameTypeCS4)
-    #any clan sizes that we didn't get, we'll remove from results
-    for clanSize in remainingClanSizes:
-        excludeParams.append(clanSize)
+        acceptedClanSizes.append(SteamQueryParam.get_clan_size(clanSize))
+    clanSizeQuery = SteamQueryParam.generate_LogicalOR_query(acceptedClanSizes)
+    queryParams.append(clanSizeQuery)
 
-    remainingServerTypes = [SteamQueryParam.GameTypePVE,SteamQueryParam.GameTypePVP,SteamQueryParam.Secure,SteamQueryParam.GameTypeHC]
-    for serverType in serverTypeList:
+    #for each value of multiplayerTypeList we're going to create a SteamQueryParam and apply a logical OR on them
+    #that way we get servers that have any of the multiplayer modes
+    acceptedMultiplayerTypes = []
+    for serverType in multiplayerModeList:
         if serverType == 'PvP':
-            #queryParams.append(SteamQueryParam.GameTypePVP)
-            remainingServerTypes.remove(SteamQueryParam.GameTypePVP)
+            acceptedMultiplayerTypes.append(SteamQueryParam.GameTypePVP)
         elif serverType == 'PvE':
-            #queryParams.append(SteamQueryParam.GameTypePVE)
-            remainingServerTypes.remove(SteamQueryParam.GameTypePVE)
-        elif clanSize == 'Dedicated':
-            #queryParams.append(SteamQueryParam.Secure)
-            remainingServerTypes.remove(SteamQueryParam.Secure)
-        elif clanSize == 'Hardcore':
-            #queryParams.append(SteamQueryParam.GameTypeHC)
-            remainingServerTypes.remove(SteamQueryParam.GameTypeHC)
-    #any clan sizes that we didn't get, we'll remove from results
-    for serverTypes in remainingServerTypes:
-        excludeParams.append(serverTypes)
+            acceptedMultiplayerTypes.append(SteamQueryParam.GameTypePVE)
+    multiplayerTypeQuery = SteamQueryParam.generate_LogicalOR_query(acceptedMultiplayerTypes)
+    queryParams.append(multiplayerTypeQuery)
 
-    query = SteamServerQuery(params=queryParams,excludeParams=excludeParams,serverName=serverName).get_query()
-    print(query)
+    #adds query parameters for any other server options provided
+    if dedicated=='Dedicated':
+        queryParams.append(SteamQueryParam.Dedicated)
+    elif dedicated=='Public':
+        excludeParams.append(SteamQueryParam.Dedicated)
+    if secure=='Locked':
+        queryParams.append(SteamQueryParam.Secure)
+    elif secure=='Open':
+        excludeParams.append(SteamQueryParam.Secure)
+    if difficulty=='Hardcore':
+        queryParams.append(SteamQueryParam.GameTypeHC)
+    elif difficulty=='Casual':
+        excludeParams.append(SteamQueryParam.GameTypeHC)
+
+    query = SteamServerQuery(params=queryParams,excludeParams=excludeParams).get_query()
     game_servers=steam_service.get_server_list(query)
 
     for server in game_servers:
-        print(server)
         server_list['servers'].append({'name':str(server['name']),'players':server['players'], 'max_players':server['max_players']})
 
     return server_list
@@ -74,5 +83,4 @@ def allServers():
     return server_list
 
 if __name__ == "__main__":
-    steam_service.sign_in()
     app.run(debug=True)
