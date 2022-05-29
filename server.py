@@ -14,16 +14,25 @@ app = Flask(__name__)
 #Flask Routing
 @app.route("/servers",methods = ['GET'])
 def servers():
-    server_list = {'servers':[]}
     #gets the request parameters
     #TODO: add parameter validation
-    serverName = request.args.get('serverName', None)
+    serverName = request.args.get('serverName', '')
     clanSizeList = request.args.get('clanSize','').split(',')
     multiplayerModeList = request.args.get('serverType','').split(',')
-    dedicated = request.args.get('dedicated', None)
-    secure = request.args.get('secure', None)
-    difficulty = request.args.get('difficulty', None)
+    dedicated = request.args.get('dedicated', '')
+    secure = request.args.get('secure', '')
+    difficulty = request.args.get('difficulty', '')
 
+    server_list = get_servers(serverName,clanSizeList,multiplayerModeList,dedicated,secure,difficulty)
+    return server_list
+
+@app.route("/allServers",methods = ['GET'])
+def allServers():
+    server_list = get_all_servers()
+    return server_list
+
+def get_servers(serverName='',clanSizeList=[],multiplayerModeList=[],dedicated='',secure='',difficulty=''):
+    server_list = {'servers':[]}
     #TODO:We don't include empty servers by default. Might change later to receive the value from filters
     #parameters that we want to apply on the steam query
     queryParams = [SteamQueryParam.NotEmpty]
@@ -36,7 +45,7 @@ def servers():
     #for each value of clanSizeList we're going to create a SteamQueryParam and apply a logical OR on them
     #that way we get servers that have any of the supplied clan sizes
     acceptedClanSizes = []
-    for clanSize in clanSizeList:
+    for clanSize in range(int(clanSizeList[0]),int(clanSizeList[1])+1):
         acceptedClanSizes.append(SteamQueryParam.get_clan_size(clanSize))
     clanSizeQuery = SteamQueryParam.generate_LogicalOR_query(acceptedClanSizes)
     queryParams.append(clanSizeQuery)
@@ -70,16 +79,54 @@ def servers():
     game_servers=steam_service.get_server_list(query)
 
     for server in game_servers:
-        server_list['servers'].append({'name':str(server['name']),'players':server['players'], 'max_players':server['max_players']})
-
+        serverObject = {
+        'name':str(server['name']),
+        'players':server['players'], 
+        'max_players':server['max_players'],
+        'isSecure':server['secure'], 
+        'isDedicated':server['dedicated'],
+        'isPVP' : False,
+        'isPVE' : False,
+        'isHardcore':False
+        }
+        for gametype in server['gametype'].split(','):
+            if gametype == 'hc':
+                serverObject['isHardcore'] = True
+            if gametype == 'pve':
+                serverObject['isPVE'] = True
+            if gametype == 'pvp':
+                serverObject['isPVP'] = True
+            if 'cs' in gametype:
+                serverObject['clanSize'] = gametype.split('cs')[1]
+                
+        server_list['servers'].append(serverObject)
     return server_list
 
-@app.route("/allServers",methods = ['GET'])
-def allServers():
+def get_all_servers():
     server_list = {'servers':[]}
     game_servers=steam_service.get_complete_server_list()
     for server in game_servers:
-        server_list['servers'].append({'name':str(server['name']),'players':server['players'], 'max_players':server['max_players']})
+        serverObject = {
+        'name':str(server['name']),
+        'players':server['players'], 
+        'max_players':server['max_players'],
+        'isSecure':server['secure'], 
+        'isDedicated':server['dedicated'],
+        'isPVP' : False,
+        'isPVE' : False,
+        'isHardcore':False
+        }
+        for gametype in server['gametype'].split(','):
+            if gametype == 'hc':
+                serverObject['isHardcore'] = True
+            if gametype == 'pve':
+                serverObject['isPVE'] = True
+            if gametype == 'pvp':
+                serverObject['isPVP'] = True
+            if 'cs' in gametype:
+                serverObject['clanSize'] = gametype.split('cs')[1]
+                
+        server_list['servers'].append(serverObject)
     return server_list
 
 if __name__ == "__main__":

@@ -111,7 +111,7 @@ class SteamServerQuery():
                 query+=str(param)
         return query
     
-def get_server_list(stringQuery, max_servers=20000,timeout = 50):
+def get_server_list(stringQuery, max_servers=5000,timeout = 50):
     '''
     Returns information about servers that match the description of the query
 
