@@ -6,10 +6,13 @@ from flask import request
 from steam_service import SteamServerQuery
 from steam_service import SteamQueryParam
 import steam_service
-import os
+from flask_cors import CORS
+
 
 
 app = Flask(__name__)
+CORS(app, origins=['https://game-snoop.herokuapp.com/'])
+
 
 #Flask Routing endpoints
 @app.route("/",methods = ['GET'])
