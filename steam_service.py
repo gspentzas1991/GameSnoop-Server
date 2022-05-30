@@ -117,7 +117,9 @@ def get_server_list(stringQuery, max_servers=5000,timeout = 50):
 
     stringQuery: A Steam Server Query
     '''
+    print(f'query : {stringQuery}')
     result =  steam_client.gameservers.get_server_list(stringQuery,max_servers,timeout)
+    print(f'result : {result}')
     return result
 
 def get_complete_server_list():
