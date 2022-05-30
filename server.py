@@ -11,8 +11,7 @@ from flask_cors import CORS
 
 
 app = Flask(__name__)
-CORS(app, origins=['https://game-snoop.herokuapp.com'])
-
+CORS(app)
 
 #Flask Routing endpoints
 @app.route("/",methods = ['GET'])
