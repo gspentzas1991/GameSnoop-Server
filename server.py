@@ -20,6 +20,7 @@ def home():
 
 @app.route("/servers",methods = ['GET'])
 def servers():
+    steam_service.sign_in()
     #gets the request parameters
     #TODO: add parameter validation
     serverName = request.args.get('serverName', '')
