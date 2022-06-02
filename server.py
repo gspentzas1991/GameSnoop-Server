@@ -11,7 +11,7 @@ from flask_cors import CORS
 
 
 app = Flask(__name__)
-CORS(app)
+CORS(app,origins=['http://www.gamesnoop.gg/','https://www.gamesnoop.gg/'])
 
 #Flask Routing endpoints
 @app.route("/",methods = ['GET'])
@@ -20,7 +20,6 @@ def home():
 
 @app.route("/servers",methods = ['GET'])
 def servers():
-    steam_service.sign_in()
     #gets the request parameters
     #TODO: add parameter validation
     serverName = request.args.get('serverName', '')
@@ -130,4 +129,5 @@ def generate_server_model(steam_server):
     return serverObject
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    steam_service.sign_in()
+    app.run()
