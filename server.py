@@ -11,7 +11,7 @@ from flask_cors import CORS
 
 
 app = Flask(__name__)
-CORS(app,origins=['http://www.gamesnoop.gg/','https://www.gamesnoop.gg/'])
+CORS(app,origins=['http://www.gamesnoop.gg','https://www.gamesnoop.gg'])
 
 #Flask Routing endpoints
 @app.route("/",methods = ['GET'])
