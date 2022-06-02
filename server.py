@@ -129,5 +129,4 @@ def generate_server_model(steam_server):
     return serverObject
 
 if __name__ == "__main__":
-    steam_service.sign_in()
     app.run()

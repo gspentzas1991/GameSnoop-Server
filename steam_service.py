@@ -117,6 +117,7 @@ def get_server_list(stringQuery, max_servers=5000,timeout = 50):
 
     stringQuery: A Steam Server Query
     '''
+    sign_in()
     result =  steam_client.gameservers.get_server_list(stringQuery,max_servers,timeout)
     return result
 
@@ -130,6 +131,7 @@ def get_complete_server_list():
     
     '''
 
+    sign_in()
     game_servers = []
     #each steam server request can return up to 20k servers, so we need to create multiple different queries and collect the results to get all servers
     #by default we ignore empty servers, this might turn into an option later (probably everything will be handled with frontent filters)
