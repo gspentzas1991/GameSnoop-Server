@@ -55,6 +55,7 @@ def get_servers(serverName='',clanSizeList=[],multiplayerModeList=[],dedicated='
 
     Executes the query and returns a list of dictionary viewModels (see generate_server_model)
     '''
+    sign_in_steam_client()
     server_list = {'servers':[]}
     #TODO:We don't include empty servers by default. Might change later to receive the value from filters
     #parameters that we want to apply on the steam query
@@ -122,6 +123,7 @@ def get_complete_server_list():
     Returns the serverlist
     
     '''
+    sign_in_steam_client()
     game_servers = []
     #each steam server request can return up to 20k servers, so we need to create multiple different queries and collect the results to get all servers
     #by default we ignore empty servers, this might turn into an option later (probably everything will be handled with frontent filters)
