@@ -3,10 +3,10 @@ monkey.patch_all()
 
 from flask import Flask
 from flask import request
-from steam_service import SteamServerQuery
-from steam_service import SteamQueryParam
-from steam_service import Logical
-import steam_service
+import simple_steam_queries
+from simple_steam_queries import SteamQueryParam
+from simple_steam_queries import Logical
+from simple_steam_queries import SteamServerQuery
 from enum import Enum
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -96,7 +96,7 @@ def get_servers(serverName='',clanSizeList=[],multiplayerModeList=[],dedicated='
         excludeParams.append(SteamQueryParam.get_gametype_param(GameType.Hardcore.value))
     queryParams.append(SteamQueryParam.generate_logical_query(Logical.NOR,excludeParams))
     query = SteamServerQuery(params=queryParams).get_query()
-    game_servers=steam_service.get_server_list(query,max_servers=5000)
+    game_servers=simple_steam_queries.get_server_list(query,max_servers=5000)
 
     for server in game_servers: 
         server_list['servers'].append(generate_server_model(server))
@@ -150,7 +150,7 @@ def get_complete_server_list():
     queryList.append(SteamServerQuery(params))
     for query in queryList:
         queryString = query.get_query()
-        game_servers.extend(steam_service.get_server_list(queryString))
+        game_servers.extend(simple_steam_queries.get_server_list(queryString))
     return game_servers
 
 def generate_server_model(steam_server):
@@ -186,7 +186,7 @@ def sign_in_steam_client():
     load_dotenv('./server_secrets.env')
     steam_username=os.getenv('steamUser')
     steam_password = os.getenv('steamPass')
-    steam_service.sign_in(steam_username,steam_password)
+    simple_steam_queries.sign_in(steam_username,steam_password)
 
 if __name__ == "__main__":
     app.run()
