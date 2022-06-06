@@ -150,7 +150,9 @@ def get_complete_server_list():
     queryList.append(SteamServerQuery(params))
     for query in queryList:
         queryString = query.get_query()
-        game_servers.extend(simple_steam_queries.get_server_list(queryString))
+        newServers = simple_steam_queries.get_server_list(queryString)
+        if(newServers):
+            game_servers.extend(newServers)
     return game_servers
 
 def generate_server_model(steam_server):
