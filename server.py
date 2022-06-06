@@ -16,6 +16,7 @@ class GameType(Enum):
     PVE = 'pve'
     PVP = 'pvp'
     Hardcore = 'hc'
+    ClanSize = 'CS'
 
 app = Flask(__name__)
 CORS(app,origins=['http://www.gamesnoop.gg','https://www.gamesnoop.gg','http://localhost:3000'])
@@ -62,7 +63,7 @@ def get_servers(serverName='',clanSizeList=[],multiplayerModeList=[],dedicated='
     #that way we get servers that have any of the supplied clan sizes
     acceptedClanSizes = []
     for clanSize in range(int(clanSizeList[0]),int(clanSizeList[1])+1):
-        clanSizeGametype = f'CS{clanSize}'
+        clanSizeGametype = f'{GameType.ClanSize.value}{clanSize}'
         acceptedClanSizes.append(SteamQueryParam.get_gametype_param(clanSizeGametype))
     clanSizeQuery = SteamQueryParam.generate_logical_query(Logical.OR,acceptedClanSizes)
     queryParams.append(clanSizeQuery)
@@ -104,10 +105,49 @@ def get_all_servers():
     Returns a list of dictionary viewModels (see generate_server_model)
     '''
     server_list = {'servers':[]}
-    game_servers=steam_service.get_complete_server_list()
+    game_servers=get_complete_server_list()
     for server in game_servers:
         server_list['servers'].append(generate_server_model(server))
     return server_list
+
+def get_complete_server_list():
+    '''
+    Runs multiple Steam Server Queries to get every single game server listed (not including empty ones)
+    Because each query can only return up to 20k servers, we split up server types to try to get fewer servers with each query
+    Returns the serverlist
+    
+    '''
+    game_servers = []
+    #each steam server request can return up to 20k servers, so we need to create multiple different queries and collect the results to get all servers
+    #by default we ignore empty servers, this might turn into an option later (probably everything will be handled with frontent filters)
+    queryList = []
+    #password protected servers (any kind)
+    params = [SteamQueryParam.Secure,SteamQueryParam.NotEmpty]
+    queryList.append(SteamServerQuery(params))
+    #full servers (any kind)
+    params = SteamQueryParam.generate_logical_query(Logical.NOR,[SteamQueryParam.NotFull])
+    queryList.append(SteamServerQuery(params))
+    #PVP servers with no password, who are not full
+    params = [SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.get_gametype_param(GameType.PVP)]
+    params.append(SteamQueryParam.generate_logical_query(Logical.NOR,[SteamQueryParam.Secure]))
+    queryList.append(SteamServerQuery(params))
+    #pve servers of clan size 4 who are not full, with no password and not hardcore
+    params = [SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.get_gametype_param(GameType.PVE),SteamQueryParam.get_gametype_param(f'{GameType.ClanSize.value}4')]   
+    params.append(SteamQueryParam.generate_logical_query(Logical.NOR,[SteamQueryParam.Secure,SteamQueryParam.get_gametype_param(GameType.Hardcore)]))
+    queryList.append(SteamServerQuery(params))
+    #PVE servers with no password, not hardcore and with a clan size different than 4
+    params = [SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.get_gametype_param(GameType.PVP)]  
+    params.append(SteamQueryParam.generate_logical_query(Logical.NOR,[SteamQueryParam.Secure,SteamQueryParam.get_gametype_param(GameType.Hardcore),
+        SteamQueryParam.get_gametype_param(f'{GameType.ClanSize.value}4')]))
+    queryList.append(SteamServerQuery(params))
+    #PVE servers that are HardCore with no passwords
+    params = [SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.get_gametype_param(GameType.PVE),SteamQueryParam.get_gametype_param(GameType.Hardcore)]
+    params.append(SteamQueryParam.generate_logical_query(Logical.NOR,[SteamQueryParam.Secure]))
+    queryList.append(SteamServerQuery(params))
+    for query in queryList:
+        queryString = query.get_query()
+        game_servers.extend(steam_service.get_server_list(queryString))
+    return game_servers
 
 def generate_server_model(steam_server):
     '''
@@ -125,15 +165,17 @@ def generate_server_model(steam_server):
         'isPVE' : False,
         'isHardcore':False
         }
-    for gametype in steam_server['gametype'].split(','):
-        if gametype == 'hc':
-            serverObject['isHardcore'] = True
-        if gametype == 'pve':
-            serverObject['isPVE'] = True
-        if gametype == 'pvp':
-            serverObject['isPVP'] = True
-        if 'cs' in gametype:
-            serverObject['clanSize'] = gametype.split('cs')[1]
+    server_gametype = steam_server.get('gametype')
+    if(server_gametype):
+        for gametype in str(server_gametype).split(','):
+            if gametype == 'hc':
+                serverObject['isHardcore'] = True
+            if gametype == 'pve':
+                serverObject['isPVE'] = True
+            if gametype == 'pvp':
+                serverObject['isPVP'] = True
+            if 'cs' in gametype:
+                serverObject['clanSize'] = gametype.split('cs')[1]
     return serverObject
 
 def sign_in_steam_client():
