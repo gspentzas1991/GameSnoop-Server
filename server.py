@@ -98,8 +98,9 @@ def get_servers(serverName='',clanSizeList=[],multiplayerModeList=[],dedicated='
     query = SteamServerQuery(params=queryParams).get_query()
     game_servers=simple_steam_queries.get_server_list(query,max_servers=5000)
 
-    for server in game_servers: 
-        server_list['servers'].append(generate_server_model(server))
+    if(game_servers):
+        for server in game_servers: 
+            server_list['servers'].append(generate_server_model(server))
     return server_list
 
 def get_all_servers():
@@ -129,23 +130,24 @@ def get_complete_server_list():
     params = [SteamQueryParam.Secure,SteamQueryParam.NotEmpty,SteamQueryParam.get_appId_param(1604030)]
     queryList.append(SteamServerQuery(params))
     #full servers (any kind)
-    params = SteamQueryParam.generate_logical_query(Logical.NOR,[SteamQueryParam.NotFull])
+    params = [SteamQueryParam.generate_logical_query(Logical.NOR,[SteamQueryParam.NotFull])]
+    params.append(SteamQueryParam.get_appId_param(1604030))
     queryList.append(SteamServerQuery(params))
     #PVP servers with no password, who are not full
-    params = [SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.get_gametype_param(GameType.PVP)]
+    params = [SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.get_gametype_param(GameType.PVP),SteamQueryParam.get_appId_param(1604030)]
     params.append(SteamQueryParam.generate_logical_query(Logical.NOR,[SteamQueryParam.Secure]))
     queryList.append(SteamServerQuery(params))
     #pve servers of clan size 4 who are not full, with no password and not hardcore
-    params = [SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.get_gametype_param(GameType.PVE),SteamQueryParam.get_gametype_param(f'{GameType.ClanSize.value}4')]   
+    params = [SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.get_gametype_param(GameType.PVE),SteamQueryParam.get_gametype_param(f'{GameType.ClanSize.value}4'),SteamQueryParam.get_appId_param(1604030)]   
     params.append(SteamQueryParam.generate_logical_query(Logical.NOR,[SteamQueryParam.Secure,SteamQueryParam.get_gametype_param(GameType.Hardcore)]))
     queryList.append(SteamServerQuery(params))
     #PVE servers with no password, not hardcore and with a clan size different than 4
-    params = [SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.get_gametype_param(GameType.PVP)]  
+    params = [SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.get_gametype_param(GameType.PVP),SteamQueryParam.get_appId_param(1604030)]  
     params.append(SteamQueryParam.generate_logical_query(Logical.NOR,[SteamQueryParam.Secure,SteamQueryParam.get_gametype_param(GameType.Hardcore),
         SteamQueryParam.get_gametype_param(f'{GameType.ClanSize.value}4')]))
     queryList.append(SteamServerQuery(params))
     #PVE servers that are HardCore with no passwords
-    params = [SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.get_gametype_param(GameType.PVE),SteamQueryParam.get_gametype_param(GameType.Hardcore)]
+    params = [SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.get_gametype_param(GameType.PVE),SteamQueryParam.get_gametype_param(GameType.Hardcore),SteamQueryParam.get_appId_param(1604030)]
     params.append(SteamQueryParam.generate_logical_query(Logical.NOR,[SteamQueryParam.Secure]))
     queryList.append(SteamServerQuery(params))
     for query in queryList:
