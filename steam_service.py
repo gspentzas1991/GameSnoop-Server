@@ -1,160 +1,143 @@
 from steam.client import SteamClient
 from enum import Enum
-from dotenv import load_dotenv
-import os
-
-
-
 
 steam_client = SteamClient()
 
-def sign_in():
+def sign_in(username,password):
     '''
     Signs in the global SteamClient object, with the credentials provided in the server_secrets.env file
     '''
     global steam_client 
     if(steam_client.session_id is None):
         steam_client = SteamClient()
-        load_dotenv('./server_secrets.env')
-        steam_username=os.getenv('steamUser')
-        steam_password = os.getenv('steamPass')
-        steam_client.cli_login(username=steam_username,password=steam_password)
+        steam_client.cli_login(username,password)
 
+class Logical(Enum):
+    '''
+    An enum of all possible logic operations
+    '''
+    OR = 'or'
+    AND = 'and'
+    NOR = 'nor'
+    NAND = 'nand'
+
+    def __str__(self):
+        return self.value
 
 class SteamQueryParam(Enum):
     '''
-    Contains strings for different Steam query parameters
-
-    GameTypeCS requires a clan size to also be provided, see get_clan_size(size)
+    Enums with strings for different Steam query parameters
     '''
     NotEmpty = r'\empty\1'   
     NotFull = r'\full\1'  
     Secure = r'\secure\1'
     Dedicated = r'\dedicated\1'
-    GameTypePVE = r'\gametype\pve'
-    GameTypePVP = r'\gametype\pvp'
-    GameTypeHC = r'\gametype\hc'
-    #requires a clan size to be provided
-    __GameTypeCS = r'\gametype\cs'
+    Linux = r'\linux\1'
+    SpectatorProxy = r'\proxy\1'
+    Whitelisted = r'\white\1'
+    CollapseAddressHash = r'\collapse_addr_hash\1'
+    #these require additional input and are generated from the get_param functions below
+    __AppId = r'\appid'
+    __GameType = r'\gametype'
     __ServerName = r'\name_match'
+    __GameDir = r'\gamedir'
+    __Map = r'\map'
+    __GameAddr = r'\gameaddr'
+    __Version = r'\version_match'
 
     def __str__(self):
         return self.value
-    def generate_LogicalOR_query(params):
-        '''
-        Returns a steam query string that returns servers if they satisfy any of the supplied params
 
-        params: A list of SteamQueryParam that we want to apply the OR operation on
-
-        example:
-        call: generate_LogicalOR_query([SteamQueryParam.PVE,SteamQueryParam.PVP])
-        return: r'\or\\2\gametype\pve\gametype\pvp'
+    def generate_logical_query(logicOperation,params):
         '''
-        query = ''
+        Returns a string query that applies a logical operation on the supplied params
+        logicOperation: The logic that connects the params. Accepted values or,and,nor,nand
+        params: A list of SteamQueryParam that we want to apply the logical operation on
+
+        ***
+
+        example call: generate_logical_query(Logical.OR,[SteamQueryParam.NotEmpty,SteamQueryParam.Secure])
+        return: '\or\\2\empty\\1\secure\\1'
+        This query would return servers that are not empty OR not password protected 
+        '''
+        query = '\\'
         paramCount = len(params)
         if(paramCount==0):
             return query
         else:
-            query+=fr'\or\{paramCount}'
+            query+=str(logicOperation)
+            query+=f'\{paramCount}'
         for param in params:
             query+=str(param)
         return query
-    def get_clan_size(size):
+    def get_servername_param(name):
         '''
-        Returns a parameter for the specified clan size
-        '''
-        return f'{SteamQueryParam.__GameTypeCS}{size}'
-    def get_server_name(name):
-        '''
-        Returns a parameter for the specified server name, surrounded by wildcards
+        Returns a string query for the specified server name, surrounded by wildcards
         '''
         return rf'{SteamQueryParam.__ServerName}\*{name}*'
-
+    def get_gametype_param(gametype):        
+        '''
+        Returns a string query for the specified gametype
+        '''
+        return f'{SteamQueryParam.__GameType}\{gametype}'
+    def get_appId_param(appId):        
+        '''
+        Returns a string query for the specified appId
+        '''
+        return f'{SteamQueryParam.__AppId}\{appId}'
+    def get_gamedir_param(gamedir):        
+        '''
+        Returns a string query for the specified gamedir
+        '''
+        return f'{SteamQueryParam.__GameDir}\{gamedir}'
+    def get_map_param(map):        
+        '''
+        Returns a string query for the specified map
+        '''
+        return f'{SteamQueryParam.__Map}\{map}'
+    def get_gameaddr_param(gameaddr):        
+        '''
+        Returns a string query for servers on the specified IP address (port supported and optional)
+        '''
+        return f'{SteamQueryParam.__GameAddr}\{gameaddr}'
+    def get_version_param(version):
+        '''
+        Returns a string query for the specified version, surrounded by wildcards
+        '''
+        return rf'{SteamQueryParam.__Version}\*{version}*'
     
 class SteamServerQuery():
     '''
     Generates Steam Server queries from the string list parameters
-    
     See https://developer.valvesoftware.com/wiki/Master_Server_Query_Protocol for parameter syntax
+    params: a string list of the parameters to be applied to the query. They are implicitly connected with an "AND" logical operator. 
 
-    params: a string list of the parameters to be applied to the query
-
-    excludeParams: a string list of the parameters to exclude results from the query, added after a \\nor\\ parameter
-
-    appId: an int of the game's steam AppId to be applied to the query
+    For other logical operators see SteamQueryParam.generate_logical_query()
 
     ***
-
-    example call: SteamServerQuery(params=['\\empty\\1','\\full\\1','\\gametype\\pvp'], excludeParams=['\\secure\\1'])
-
-    resulting Filter:  \\appid\\1604030\\empty\\1\\full\\1\\gametype\\pvp\\nor\\1\\secure\\1
+    example call: SteamServerQuery(params=[SteamQueryParam.NotEmpty,SteamQueryParam.get_appId_param(1604030)])
+    query result:  \\empty\\1\\appid\\1604030
+    This query would return non-empty servers of appID 1604030
     
     '''
-    def __init__(self,params=[],excludeParams=[],appId = 1604030 ):
+    def __init__(self,params=[] ):
         self.params = params
-        self.excludeParams = excludeParams
-        self.appId = appId
 
     def get_query(self):
         """
         Returns a string query with the parameters of the object
         """
-        query = fr'\appid\{self.appId}'
-        #TODO: comment this better
+        query = ''
+        #for every parameter provided, adds its string to the query
         for param in self.params:
             query+=str(param)
-        excludeParamCount = len(self.excludeParams)
-        if(excludeParamCount>0):
-            #add the number of exclude params next to the \nor\ parameter
-            query+=fr'\nor\{excludeParamCount}'
-            for param in self.excludeParams:
-                query+=str(param)
         return query
     
-def get_server_list(stringQuery, max_servers=5000,timeout = 50):
+def get_server_list(stringQuery, max_servers=20000,timeout = 50):
     '''
     Returns information about servers that match the description of the query
 
     stringQuery: A Steam Server Query
     '''
-    sign_in()
     result =  steam_client.gameservers.get_server_list(stringQuery,max_servers,timeout)
     return result
-
-def get_complete_server_list():
-    '''
-    Runs multiple Steam Server Queries to get every single game server listed (not including empty ones)
-
-    Because each query can only return up to 20k servers, we split up server types to try to get fewer servers with each query
-
-    Returns the serverlist
-    
-    '''
-
-    sign_in()
-    game_servers = []
-    #each steam server request can return up to 20k servers, so we need to create multiple different queries and collect the results to get all servers
-    #by default we ignore empty servers, this might turn into an option later (probably everything will be handled with frontent filters)
-    queryList = []
-    #password protected servers (any kind)
-    queryList.append(SteamServerQuery(params=[SteamQueryParam.Secure,SteamQueryParam.NotEmpty]))
-    #full servers (any kind)
-    queryList.append(SteamServerQuery(excludeParams=[SteamQueryParam.NotFull]))
-    #PVP servers with no password, who are not full
-    queryList.append(SteamServerQuery(params=[SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.GameTypePVP],
-    excludeParams=[SteamQueryParam.Secure]))
-    #pve servers of clan size 4 who are not full, with no password and not hardcore
-    queryList.append(SteamServerQuery(params=[SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.GameTypePVE,SteamQueryParam.get_clan_size(4)],
-    excludeParams=[SteamQueryParam.Secure,SteamQueryParam.GameTypeHC]))
-    #PVE servers with no password, not hardcore and with a clan size different than 4
-    queryList.append(SteamServerQuery(params=[SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.GameTypePVE],
-    excludeParams=[SteamQueryParam.Secure,SteamQueryParam.GameTypeHC,SteamQueryParam.get_clan_size(4)]))
-    #PVE servers that are HardCore with no passwords
-    queryList.append(SteamServerQuery(params=[SteamQueryParam.NotFull,SteamQueryParam.NotEmpty,SteamQueryParam.GameTypePVE,SteamQueryParam.GameTypeHC],
-    excludeParams=[SteamQueryParam.Secure]))
-    for query in queryList:
-        game_servers.extend(get_server_list(query.get_query()))
-    return game_servers
-
- 
-sign_in()
