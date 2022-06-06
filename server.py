@@ -126,7 +126,7 @@ def get_complete_server_list():
     #by default we ignore empty servers, this might turn into an option later (probably everything will be handled with frontent filters)
     queryList = []
     #password protected servers (any kind)
-    params = [SteamQueryParam.Secure,SteamQueryParam.NotEmpty]
+    params = [SteamQueryParam.Secure,SteamQueryParam.NotEmpty,SteamQueryParam.get_appId_param(1604030)]
     queryList.append(SteamServerQuery(params))
     #full servers (any kind)
     params = SteamQueryParam.generate_logical_query(Logical.NOR,[SteamQueryParam.NotFull])
