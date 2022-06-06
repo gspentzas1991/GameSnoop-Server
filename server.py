@@ -5,13 +5,20 @@ from flask import Flask
 from flask import request
 from steam_service import SteamServerQuery
 from steam_service import SteamQueryParam
+from steam_service import Logical
 import steam_service
+from enum import Enum
 from flask_cors import CORS
+from dotenv import load_dotenv
+import os
 
-
+class GameType(Enum):
+    PVE = 'pve'
+    PVP = 'pvp'
+    Hardcore = 'hc'
 
 app = Flask(__name__)
-CORS(app,origins=['http://www.gamesnoop.gg','https://www.gamesnoop.gg'])
+CORS(app,origins=['http://www.gamesnoop.gg','https://www.gamesnoop.gg','http://localhost:3000'])
 
 #Flask Routing endpoints
 @app.route("/",methods = ['GET'])
@@ -46,27 +53,28 @@ def get_servers(serverName='',clanSizeList=[],multiplayerModeList=[],dedicated='
     server_list = {'servers':[]}
     #TODO:We don't include empty servers by default. Might change later to receive the value from filters
     #parameters that we want to apply on the steam query
-    queryParams = [SteamQueryParam.NotEmpty]
+    queryParams = [SteamQueryParam.NotEmpty,SteamQueryParam.get_appId_param(1604030)]
     #parameters of servers we want to be excluded from the steam query
     excludeParams = []
     if serverName :
-        queryParams.append(SteamQueryParam.get_server_name(serverName))
+        queryParams.append(SteamQueryParam.get_servername_param(serverName))
     #for each value of clanSizeList we're going to create a SteamQueryParam and apply a logical OR on them
     #that way we get servers that have any of the supplied clan sizes
     acceptedClanSizes = []
     for clanSize in range(int(clanSizeList[0]),int(clanSizeList[1])+1):
-        acceptedClanSizes.append(SteamQueryParam.get_clan_size(clanSize))
-    clanSizeQuery = SteamQueryParam.generate_LogicalOR_query(acceptedClanSizes)
+        clanSizeGametype = f'CS{clanSize}'
+        acceptedClanSizes.append(SteamQueryParam.get_gametype_param(clanSizeGametype))
+    clanSizeQuery = SteamQueryParam.generate_logical_query(Logical.OR,acceptedClanSizes)
     queryParams.append(clanSizeQuery)
     #for each value of multiplayerTypeList we're going to create a SteamQueryParam and apply a logical OR on them
     #that way we get servers that have any of the multiplayer modes
     acceptedMultiplayerTypes = []
     for serverType in multiplayerModeList:
         if serverType == 'PvP':
-            acceptedMultiplayerTypes.append(SteamQueryParam.GameTypePVP)
+            acceptedMultiplayerTypes.append(SteamQueryParam.get_gametype_param(GameType.PVP.value))
         elif serverType == 'PvE':
-            acceptedMultiplayerTypes.append(SteamQueryParam.GameTypePVE)
-    multiplayerTypeQuery = SteamQueryParam.generate_LogicalOR_query(acceptedMultiplayerTypes)
+            acceptedMultiplayerTypes.append(SteamQueryParam.get_gametype_param(GameType.PVE.value))
+    multiplayerTypeQuery = SteamQueryParam.generate_logical_query(Logical.OR,acceptedMultiplayerTypes)
     queryParams.append(multiplayerTypeQuery)
     #adds query parameters for any other server options provided
     if dedicated=='Dedicated':
@@ -78,12 +86,12 @@ def get_servers(serverName='',clanSizeList=[],multiplayerModeList=[],dedicated='
     elif secure=='Open':
         excludeParams.append(SteamQueryParam.Secure)
     if difficulty=='Hardcore':
-        queryParams.append(SteamQueryParam.GameTypeHC)
+        queryParams.append(SteamQueryParam.get_gametype_param(GameType.Hardcore.value))
     elif difficulty=='Casual':
-        excludeParams.append(SteamQueryParam.GameTypeHC)
-
-    query = SteamServerQuery(params=queryParams,excludeParams=excludeParams).get_query()
-    game_servers=steam_service.get_server_list(query)
+        excludeParams.append(SteamQueryParam.get_gametype_param(GameType.Hardcore.value))
+    queryParams.append(SteamQueryParam.generate_logical_query(Logical.NOR,excludeParams))
+    query = SteamServerQuery(params=queryParams).get_query()
+    game_servers=steam_service.get_server_list(query,max_servers=5000)
 
     for server in game_servers: 
         server_list['servers'].append(generate_server_model(server))
@@ -128,5 +136,12 @@ def generate_server_model(steam_server):
             serverObject['clanSize'] = gametype.split('cs')[1]
     return serverObject
 
+def sign_in_steam_client():
+    load_dotenv('./server_secrets.env')
+    steam_username=os.getenv('steamUser')
+    steam_password = os.getenv('steamPass')
+    steam_service.sign_in(steam_username,steam_password)
+
 if __name__ == "__main__":
+    sign_in_steam_client()
     app.run()
