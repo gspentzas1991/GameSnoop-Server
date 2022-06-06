@@ -92,6 +92,7 @@ def get_servers(serverName='',clanSizeList=[],multiplayerModeList=[],dedicated='
         excludeParams.append(SteamQueryParam.get_gametype_param(GameType.Hardcore.value))
     queryParams.append(SteamQueryParam.generate_logical_query(Logical.NOR,excludeParams))
     query = SteamServerQuery(params=queryParams).get_query()
+    sign_in_steam_client()
     game_servers=steam_service.get_server_list(query,max_servers=5000)
 
     for server in game_servers: 
@@ -146,6 +147,7 @@ def get_complete_server_list():
     queryList.append(SteamServerQuery(params))
     for query in queryList:
         queryString = query.get_query()
+        sign_in_steam_client()
         game_servers.extend(steam_service.get_server_list(queryString))
     return game_servers
 
