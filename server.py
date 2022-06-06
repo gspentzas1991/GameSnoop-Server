@@ -158,11 +158,11 @@ def generate_server_model(steam_server):
     Dictionary Keys: name, players,max_players,isSecure,isDedicated,isPVP,isPVE,isHardcore,
     '''
     serverObject = {
-        'name':str(steam_server['name']),
-        'players':steam_server['players'], 
-        'max_players':steam_server['max_players'],
-        'isSecure':steam_server['secure'], 
-        'isDedicated':steam_server['dedicated'],
+        'name':str(steam_server.get('name')),
+        'players':str(steam_server.get('players')), 
+        'max_players':str(steam_server.get('max_players')),
+        'isSecure':str(steam_server.get('secure')), 
+        'isDedicated':str(steam_server.get('dedicated')),
         'isPVP' : False,
         'isPVE' : False,
         'isHardcore':False
