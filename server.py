@@ -21,6 +21,10 @@ class GameType(Enum):
 app = Flask(__name__)
 CORS(app,origins=['http://www.gamesnoop.gg','https://www.gamesnoop.gg','http://localhost:3000'])
 
+@app.before_first_request
+def startup():
+    sign_in_steam_client()
+
 #Flask Routing endpoints
 @app.route("/",methods = ['GET'])
 def home():
@@ -92,7 +96,6 @@ def get_servers(serverName='',clanSizeList=[],multiplayerModeList=[],dedicated='
         excludeParams.append(SteamQueryParam.get_gametype_param(GameType.Hardcore.value))
     queryParams.append(SteamQueryParam.generate_logical_query(Logical.NOR,excludeParams))
     query = SteamServerQuery(params=queryParams).get_query()
-    sign_in_steam_client()
     game_servers=steam_service.get_server_list(query,max_servers=5000)
 
     for server in game_servers: 
@@ -147,7 +150,6 @@ def get_complete_server_list():
     queryList.append(SteamServerQuery(params))
     for query in queryList:
         queryString = query.get_query()
-        sign_in_steam_client()
         game_servers.extend(steam_service.get_server_list(queryString))
     return game_servers
 
@@ -159,10 +161,10 @@ def generate_server_model(steam_server):
     '''
     serverObject = {
         'name':str(steam_server.get('name')),
-        'players':str(steam_server.get('players')), 
-        'max_players':str(steam_server.get('max_players')),
-        'isSecure':str(steam_server.get('secure')), 
-        'isDedicated':str(steam_server.get('dedicated')),
+        'players':int(steam_server.get('players')), 
+        'max_players':int(steam_server.get('max_players')),
+        'isSecure':bool(steam_server.get('secure')), 
+        'isDedicated':bool(steam_server.get('dedicated')),
         'isPVP' : False,
         'isPVE' : False,
         'isHardcore':False
@@ -187,5 +189,4 @@ def sign_in_steam_client():
     steam_service.sign_in(steam_username,steam_password)
 
 if __name__ == "__main__":
-    sign_in_steam_client()
     app.run()

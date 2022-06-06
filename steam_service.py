@@ -9,7 +9,6 @@ def sign_in(username,password):
     '''
     global steam_client 
     if(steam_client.session_id is None):
-        steam_client = SteamClient()
         steam_client.cli_login(username,password)
 
 class Logical(Enum):
